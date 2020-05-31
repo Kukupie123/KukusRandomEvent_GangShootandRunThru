@@ -9,4 +9,3 @@ B:\Code\c#\GTA5\TEST\KukusRandomEvent_GangShootandRunThru\obj\Debug\Events.cspro
 B:\Code\c#\GTA5\TEST\KukusRandomEvent_GangShootandRunThru\obj\Debug\Events.csproj.CopyComplete
 B:\Code\c#\GTA5\TEST\KukusRandomEvent_GangShootandRunThru\obj\Debug\Events.dll
 B:\Code\c#\GTA5\TEST\KukusRandomEvent_GangShootandRunThru\obj\Debug\Events.pdb
-B:\Code\c#\GTA5\TEST\KukusRandomEvent_GangShootandRunThru\obj\Debug\Events.csprojAssemblyReference.cache

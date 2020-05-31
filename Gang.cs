@@ -11,10 +11,6 @@ namespace KukuEvent
         private List<Ped> ballas; //List of thugs in ballas team
         private List<Ped> groves; //List of thugs in groves team
 
-
-        int gangCounterB = 0;
-        int gangCounterG = 0;
-
         Dictionary<Ped, int> enterCarCounterB;
         Dictionary<Ped, int> enterCarCounterG;
 
@@ -214,13 +210,14 @@ namespace KukuEvent
                         break;
                 }
                 //Setting up relatinships, stats, blips etc
+                i.Accuracy = rand.Next(40, 100);
                 i.RelationshipGroup = groupBallas;
 
                 Function.Call(Hash.SET_PED_COMBAT_ABILITY, i, rand.Next(30, 100)); // random attack power
                 Function.Call(Hash.SET_PED_FLEE_ATTRIBUTES, i, 0, 0); //ped wont flee
 
                 i.MaxHealth = 200000;
-                i.Armor = 10000;
+                i.Armor = 200000;
                 i.Health = 200000;
 
                 i.AddBlip();
@@ -261,14 +258,14 @@ namespace KukuEvent
                         i.Weapons.Give(WeaponHash.HomingLauncher, 5, true, true);
                         break;
                 }
-
+                i.Accuracy = rand.Next(40, 100);
                 i.RelationshipGroup = groupGrove;
 
 
                 Function.Call(Hash.SET_PED_COMBAT_ABILITY, i, rand.Next(30, 100)); // random attack power
                 Function.Call(Hash.SET_PED_FLEE_ATTRIBUTES, i, 0, 0); //ped wont flee
                 i.MaxHealth = 200000;
-                i.Armor = 10000;
+                i.Armor = 200000;
                 i.Health = 200000;
                 i.AddBlip();
                 i.CurrentBlip.Color = BlipColor.Green;
@@ -431,9 +428,10 @@ namespace KukuEvent
         }
         private void ifEnterCar(Ped p, Dictionary<Ped, int> enterCounter, int threshold)
         {
-            if (p.IsInCombat == false && p.IsInVehicle() == false && p.IsGettingIntoAVehicle == false && p.IsTryingToEnterALockedVehicle == false)
+            if (p.IsInCombat == false && p.IsGettingIntoAVehicle == false && p.IsTryingToEnterALockedVehicle == false && p.IsInVehicle() == false)
             {
-                Vehicle v = World.GetClosestVehicle(p.Position, 5000);
+                
+                Vehicle v = World.GetClosestVehicle(p.Position, 50000);
                 if (v == null)
                 {
                     //No car nearby. FUTURE PLANS
@@ -441,27 +439,30 @@ namespace KukuEvent
                 else
                 {
                     p.Task.EnterVehicle(v, VehicleSeat.Any);
-                    enterCounter[p] = enterCounter[p]++;
+                    enterCounter[p]++;
+                    if (enterCounter[p] > threshold)
+                    {
+                         v = World.GetClosestVehicle(p.Position, 5000);
+                        if (v == null)
+                        {
+
+                        }
+                        else
+                        {
+                            p.Task.WarpIntoVehicle(v, VehicleSeat.Any);
+                            enterCounter[p] = 0;
+                        }
+                    }
                 }
+
             }
             else
             {
                 enterCounter[p] = 0;
             }
+            
 
-            if (enterCounter[p] > threshold)
-            {
-                Vehicle v = World.GetClosestVehicle(p.Position, 5000);
-                if (v == null)
-                {
-                    enterCounter[p] = 0;
-                }
-                else
-                {
-                    p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
-                    enterCounter[p] = 0;
-                }
-            }
+
         }
         public void check(int threshold)
         {
@@ -488,7 +489,7 @@ namespace KukuEvent
             int counter = 0;
             if (alive != null)
             {
-                foreach(Ped p in alive)
+                foreach (Ped p in alive)
                 {
                     if (p != null)
                     {
@@ -502,12 +503,14 @@ namespace KukuEvent
                 {
                     return true;
                 }
+                else
+                    return false;
             }
             return false;
         }
-        private void ifDrive(Ped p, Dictionary<Ped, int> driveEncounter, int threshold,List<Ped> alive)
+        private void ifDrive(Ped p, Dictionary<Ped, int> driveEncounter, int threshold, List<Ped> alive)
         {
-            if(p.IsInVehicle()|| p.IsSittingInVehicle())
+            if (p.IsInVehicle() || p.IsSittingInVehicle())
             {
                 /*1. -If car full drive away
                  *1.2-If driver dead warp seat n drive else let driver drive
@@ -515,6 +518,9 @@ namespace KukuEvent
                  *2.1-If driver exists check if dead, if dead warp else task drive
                  *3. -If no drive warp and drive
                  */
+
+
+
                 Vehicle v = p.CurrentVehicle;
                 driveEncounter[p]++;
                 if (v == null)
@@ -523,63 +529,86 @@ namespace KukuEvent
                 }
                 else
                 {
-                    if (Function.Call<bool>(Hash._IS_ANY_VEHICLE_SEAT_EMPTY, v))
+                    //If threshold reached
+                    if (driveEncounter[p] > threshold)
                     {
-                        Ped driver = v.Driver;
-                        if (driver.IsDead)
-                        {
-                            p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
-                            p.Task.CruiseWithVehicle(v, 400);
-                        }
-                    }
-                    else if (allThugIn(alive)) //all thugs are in car
-                    {
-                         v = p.CurrentVehicle;
+                        v = p.CurrentVehicle;
                         if (v != null)
                         {
                             if (v.IsSeatFree(VehicleSeat.Driver))
                             {
                                 p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
-                                p.Task.CruiseWithVehicle(v, 200);
+                                v.GetPedOnSeat(VehicleSeat.Driver).Task.CruiseWithVehicle(v, 200);
+                                driveEncounter[p] = 0;
+
                             }
                             else
                             {
-                                if (v.Driver.IsDead)
+                                if (v.GetPedOnSeat(VehicleSeat.Driver).IsAlive == false || v.GetPedOnSeat(VehicleSeat.Driver).Exists() == false)
                                 {
                                     p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
-                                    p.Task.CruiseWithVehicle(v, 200);
+                                    v.GetPedOnSeat(VehicleSeat.Driver).Task.CruiseWithVehicle(v, 200);
+                                    driveEncounter[p] = 0;
                                 }
                                 else
                                 {
-                                    v.Driver.Task.CruiseWithVehicle(v, 200);
+                                    v.GetPedOnSeat(VehicleSeat.Driver).Task.CruiseWithVehicle(v, 200);
+                                    driveEncounter[p] = 0;
                                 }
                             }
                         }
                     }
-                    else if (driveEncounter[p] > threshold)
+                    //All thugs are in
+                    else if (allThugIn(alive)) //all thugs are in car
                     {
+                       
+
                         v = p.CurrentVehicle;
-                        if (p != null)
+                        if (v != null)
                         {
                             if (v.IsSeatFree(VehicleSeat.Driver))
                             {
                                 p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
-                                p.Task.CruiseWithVehicle(v, 200);
+                                v.GetPedOnSeat(VehicleSeat.Driver).Task.CruiseWithVehicle(v, 200);
+                                driveEncounter[p] = 0;
                             }
                             else
                             {
-                                if (v.Driver.IsDead)
+                                if (v.GetPedOnSeat(VehicleSeat.Driver).IsAlive == false || v.GetPedOnSeat(VehicleSeat.Driver).Exists() == false)
                                 {
                                     p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
-                                    p.Task.CruiseWithVehicle(v, 200);
+                                    v.GetPedOnSeat(VehicleSeat.Driver).Task.CruiseWithVehicle(v, 200);
+                                    driveEncounter[p] = 0;
                                 }
                                 else
                                 {
-                                    v.Driver.Task.CruiseWithVehicle(v, 200);
+                                    v.GetPedOnSeat(VehicleSeat.Driver).Task.CruiseWithVehicle(v, 200);
+                                    driveEncounter[p] = 0;
                                 }
                             }
                         }
                     }
+                    //seats are full
+                    else if (!v.IsSeatFree(VehicleSeat.Any))
+                    {
+                        if(v.GetPedOnSeat(VehicleSeat.Driver).IsAlive== false || v.GetPedOnSeat(VehicleSeat.Driver).Exists() == false)
+                        {
+                            p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
+                            p.Task.CruiseWithVehicle(v, 200);
+                            driveEncounter[p] = 0;
+                        }
+                        else
+                        {
+                            v.GetPedOnSeat(VehicleSeat.Driver).Task.CruiseWithVehicle(v, 200);
+                            driveEncounter[p] = 0;
+                        }
+                    }
+                    //If nothing has been triggered we increment counter
+                    else 
+                    {
+                        driveEncounter[p]++;
+                    }
+                    
                 }
             }
             else
@@ -601,13 +630,13 @@ namespace KukuEvent
             {
                 ifDrive(p, driveAwayCounterB, threshold, aliveB);
             }
-            foreach(Ped p in aliveG)
+            foreach (Ped p in aliveG)
             {
                 ifDrive(p, driveAwayCounterG, threshold, aliveG);
             }
         }
 
-
+        
     }
 }
 
