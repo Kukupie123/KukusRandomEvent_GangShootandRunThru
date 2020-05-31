@@ -11,14 +11,15 @@ namespace KukuEvent
         private List<Ped> ballas; //List of thugs in ballas team
         private List<Ped> groves; //List of thugs in groves team
 
-        List<int> wrapToVehicleCounterB; //used as an alternate to Wait() so that the script continues without holding until wait command is up
-        List<int> driveAwayCounterB; //''
-        List<int> wrapToVehicleCounterG; //''
-        List<int> driveAwayCounterG; //''
 
         int gangCounterB = 0;
         int gangCounterG = 0;
 
+        Dictionary<Ped, int> enterCarCounterB;
+        Dictionary<Ped, int> enterCarCounterG;
+
+        Dictionary<Ped, int> driveAwayCounterB;
+        Dictionary<Ped, int> driveAwayCounterG;
 
         public bool eventActive = false; //used to make sure that we dont retrigger the event twice
 
@@ -32,10 +33,10 @@ namespace KukuEvent
             groves = null;
 
             //Counters are used to count the value, once it reaches a thrshold we execute another action
-            driveAwayCounterB = new List<int>();
-            driveAwayCounterG = new List<int>();
-            wrapToVehicleCounterB = new List<int>();
-            wrapToVehicleCounterG = new List<int>();
+            driveAwayCounterB = new Dictionary<Ped, int>();
+            driveAwayCounterG = new Dictionary<Ped, int>();
+            enterCarCounterB = new Dictionary<Ped, int>();
+            enterCarCounterG = new Dictionary<Ped, int>();
 
             //Sometime game skips initiation for some reason prolly frame skips and etc so we keep a loop to exit when everything has been initialized
             while (true)
@@ -48,23 +49,23 @@ namespace KukuEvent
                 {
                     groves = new List<Ped>();
                 }
+                if (enterCarCounterB == null)
+                {
+                    enterCarCounterB = new Dictionary<Ped, int>();
+                }
+                if (enterCarCounterG == null)
+                {
+                    enterCarCounterG = new Dictionary<Ped, int>();
+                }
                 if (driveAwayCounterB == null)
                 {
-                    driveAwayCounterB = new List<int>();
+                    driveAwayCounterB = new Dictionary<Ped, int>();
                 }
                 if (driveAwayCounterG == null)
                 {
-                    driveAwayCounterG = new List<int>();
+                    driveAwayCounterG = new Dictionary<Ped, int>();
                 }
-                if (wrapToVehicleCounterB == null)
-                {
-                    wrapToVehicleCounterB = new List<int>();
-                }
-                if (wrapToVehicleCounterG == null)
-                {
-                    wrapToVehicleCounterG = new List<int>();
-                }
-                if (ballas != null && groves != null && wrapToVehicleCounterB != null && wrapToVehicleCounterG != null && driveAwayCounterB != null && driveAwayCounterG != null)
+                if (ballas != null && groves != null && enterCarCounterG != null && enterCarCounterB != null && driveAwayCounterB != null && driveAwayCounterG != null)
                 {
                     break;
                 }
@@ -165,6 +166,7 @@ namespace KukuEvent
 
             }
             thug.MarkAsNoLongerNeeded();
+
         }
 
         /**
@@ -283,6 +285,19 @@ namespace KukuEvent
 
             World.SetRelationshipBetweenGroups(Relationship.Hate, groupGrove, cop);
             World.SetRelationshipBetweenGroups(Relationship.Hate, groupBallas, cop);
+
+            //COUNTERS 
+            foreach (Ped p in ballas)
+            {
+                enterCarCounterB.Add(p, 0);
+                driveAwayCounterB.Add(p, 0);
+            }
+            foreach (Ped p in groves)
+            {
+                enterCarCounterG.Add(p, 0);
+                driveAwayCounterG.Add(p, 0);
+            }
+
             //COMPLETE NOW THEY SHALL FIGHT. DO NOT USE BLOCK TEMPORARY TASK AS THE FIGHT IS SUPPOSED TO BE NATURAL AND COME AS A TEMP TASK
 
         }
@@ -340,6 +355,10 @@ namespace KukuEvent
                 ballas = null;
                 groves = null;
                 eventActive = false;
+                enterCarCounterG = new Dictionary<Ped, int>();
+                enterCarCounterB = new Dictionary<Ped, int>();
+                driveAwayCounterB = new Dictionary<Ped, int>();
+                driveAwayCounterG = new Dictionary<Ped, int>();
                 UI.ShowHelpMessage("GangWar over,either dead or ran away");
             }
         }
@@ -381,7 +400,7 @@ namespace KukuEvent
         /**
          * Returns a list of thugs who are still alive in the fight
          */
-        public List<Ped> thugsalive(List<Ped> group)
+        private List<Ped> thugsalive(List<Ped> group)
         {
             if (group != null)
             {
@@ -399,286 +418,196 @@ namespace KukuEvent
                 return null;
         }
 
-        /**Renponsible to make sure that the thugs enters a car under the right circumstances, and if stuck warped to the vehicle after a threshold
-         */
-        public void check()
+        private bool safetyCheck()
         {
-
             if (ballas == null || groves == null)
             {
-                return;
-            }
-
-            int threshold = 6; //Used as a counter. Once wrapToVehicle reaches this threshold we wrap the thug into nearest vehicle assuming he is stuck
-
-            List<Ped> aliveB = thugsalive(ballas); //getting list of thugs who are alive
-            if (aliveB != null)
-            {
-                foreach (Ped p in aliveB)
-                {
-                    wrapToVehicleCounterB.Add(0); //creating wrapToVehicleCounter integer for every alive Ped
-                }
+                return false;
             }
             else
-                return;
-
-            for (int i = 0; i < aliveB.Count; i++)
             {
-                if (aliveB[i].IsInCombat == false && aliveB[i].IsInVehicle() == false && aliveB[i].IsGettingIntoAVehicle == false && aliveB[i].IsTryingToEnterALockedVehicle == false)
-                { //Conditions needed to be satisfied to make sure he enters the car on the righ situation
-
-                    Vehicle v = World.GetClosestVehicle(aliveB[i].Position, 500);
-                    aliveB[i].Task.EnterVehicle(v, VehicleSeat.Any); //Tasking the thug to enter the vehile
-                    wrapToVehicleCounterB[i]++; //incrementing the value of WrapToVehicleB by +1
-                    if (wrapToVehicleCounterB[i] > threshold) //If the value of WrapTovehicle has crossed threshold which is 6 in our case(as of Right now) we warp him to the closest car
-                    {
-                        v = World.GetClosestVehicle(aliveB[i].Position, 500);
-                        try
-                        {
-                            aliveB[i].Task.WarpIntoVehicle(v, VehicleSeat.Any);
-                        }
-                        catch
-                        {
-                            //Just in case there is no car nearby. PLanning to make a thug member bring car but too much work for now
-                        }
-                    }
+                return true;
+            }
+        }
+        private void ifEnterCar(Ped p, Dictionary<Ped, int> enterCounter, int threshold)
+        {
+            if (p.IsInCombat == false && p.IsInVehicle() == false && p.IsGettingIntoAVehicle == false && p.IsTryingToEnterALockedVehicle == false)
+            {
+                Vehicle v = World.GetClosestVehicle(p.Position, 5000);
+                if (v == null)
+                {
+                    //No car nearby. FUTURE PLANS
                 }
                 else
                 {
-                    wrapToVehicleCounterB[i] = 0; //resetting the warpTovehicleCounter
-                }
-            }
-            //Same as ballas
-            List<Ped> aliveG = thugsalive(groves);
-            if (aliveG != null)
-            {
-                foreach (Ped p in aliveG)
-                {
-
-                    wrapToVehicleCounterG.Add(0);
+                    p.Task.EnterVehicle(v, VehicleSeat.Any);
+                    enterCounter[p] = enterCounter[p]++;
                 }
             }
             else
-                return;
-            for (int i = 0; i < aliveG.Count; i++)
             {
-                Wait(500);
-                if (aliveG[i].IsInCombat == false && aliveG[i].IsInVehicle() == false && aliveG[i].IsGettingIntoAVehicle == false && aliveG[i].IsTryingToEnterALockedVehicle == false)
+                enterCounter[p] = 0;
+            }
+
+            if (enterCounter[p] > threshold)
+            {
+                Vehicle v = World.GetClosestVehicle(p.Position, 5000);
+                if (v == null)
                 {
-                    Vehicle v = World.GetClosestVehicle(aliveG[i].Position, 500);
-                    aliveG[i].Task.EnterVehicle(v, VehicleSeat.Any);
-                    wrapToVehicleCounterG[i]++;
-                    if (wrapToVehicleCounterG[i] > threshold)
-                    {
-                        v = World.GetClosestVehicle(aliveG[i].Position, 500);
-                        try
-                        {
-                            aliveG[i].Task.WarpIntoVehicle(v, VehicleSeat.Any);
-                        }
-                        catch
-                        {
-                            //Just in case there is no car nearby. Didnt plan what to do yet. i mean i want to spawn a driver nearby and drive to this fella but too much to ask
-                        }
-                        wrapToVehicleCounterG[i] = 0;
-                    }
+                    enterCounter[p] = 0;
                 }
                 else
                 {
-                    wrapToVehicleCounterG[i] = 0;
+                    p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
+                    enterCounter[p] = 0;
                 }
             }
         }
-
-        /**Responsible to make sure that thugs drive when seat is full,homies take too long to get in,all thugs are in a car so just drive dont wait
-         */
-        public void drive()
+        public void check(int threshold)
         {
-            if (ballas == null || groves == null)
+            if (!safetyCheck())
             {
                 return;
             }
-            int threshold = 10; //USed as a timer to wait for homies to enter the car, if failed to do so within this mentioned threshold drive away
+
             List<Ped> aliveB = thugsalive(ballas);
+            List<Ped> aliveG = thugsalive(groves);
+
             foreach (Ped p in aliveB)
             {
-                driveAwayCounterB.Add(0); //Creating the number of driveAwayCounter needed
+                ifEnterCar(p, enterCarCounterB, threshold);
             }
-
-
-            for (int i = 0; i < aliveB.Count; i++)
-            {
-                if (aliveB[i].IsInVehicle() || aliveB[i].IsGettingIntoAVehicle || aliveB[i].IsTryingToEnterALockedVehicle || aliveB[i].IsSittingInVehicle())
-                {
-                    //If ped is in car or gettng in car, increase the gang counter, indicating one of the alive thug is in car. And increase the value ofdriveAwayCounterB by +1
-                    driveAwayCounterB[i]++;
-                    gangCounterB++;
-                    if (gangCounterB >= aliveB.Count) //if gangCounter == the number of thugs alive means that all the thugs are inside a car so we dont have to wait, just drive
-                    {
-
-                        Ped driver = aliveB[i].CurrentVehicle.GetPedOnSeat(VehicleSeat.Driver);
-
-                        if (aliveB[i].CurrentVehicle.IsSeatFree(VehicleSeat.Driver)) //if seat is free just warp into driver seat and drive away
-                        {
-                            aliveB[i].Task.WarpIntoVehicle(aliveB[i].CurrentVehicle, VehicleSeat.Driver);
-                            aliveB[i].Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                        }
-                        else  //seat isnt free
-                        {
-                            if (driver.IsAlive == false)//if driveris dead then warp 
-                            {
-                                aliveB[i].Task.WarpIntoVehicle(aliveB[i].CurrentVehicle, VehicleSeat.Driver);
-                                aliveB[i].Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                            }
-                            else // driver is alive so we tell the driver to drive
-                            {
-                                driver.Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                            }
-                        }
-
-                        driveAwayCounterB[i] = 0;
-                        gangCounterB = 0;
-                    }
-                    else if (driveAwayCounterB[i] > threshold || aliveB[i].CurrentVehicle.IsSeatFree(VehicleSeat.Any) == false) //else if all gangs arent in but counter threshold reaches we drive away
-                    {
-                        if (aliveB[i].CurrentVehicle.IsSeatFree(VehicleSeat.Any) == false) //if no free seats then we can directly go
-                        {
-                            Ped driver = aliveB[i].CurrentVehicle.GetPedOnSeat(VehicleSeat.Driver);
-                            if (driver.IsAlive == false) //making sure that the driver is alive
-                            {
-                                aliveB[i].Task.WarpIntoVehicle(aliveB[i].CurrentVehicle, VehicleSeat.Driver);
-                                aliveB[i].Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                            }
-                            else
-                            {
-                                driver.Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                            }
-                        }
-                        else //Means there aer free seats but counter threshold reached
-                        {
-                            if (aliveB[i].CurrentVehicle.IsSeatFree(VehicleSeat.Driver))
-                            {
-                                //If driver seat is free
-                                aliveB[i].Task.WarpIntoVehicle(aliveB[i].CurrentVehicle, VehicleSeat.Driver);
-                                aliveB[i].Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                            }
-                            else
-                            {
-                                //if driver seat isnt free
-                                if (aliveB[i].CurrentVehicle.Driver.IsAlive)
-                                {
-                                    aliveB[i].CurrentVehicle.Driver.Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                                }
-                                else
-                                {
-                                    aliveB[i].Task.WarpIntoVehicle(aliveB[i].CurrentVehicle, VehicleSeat.Driver);
-                                    aliveB[i].Task.CruiseWithVehicle(aliveB[i].CurrentVehicle, 400);
-                                }
-                            }
-                        }
-                        driveAwayCounterB[i] = 0;//resetting the driveAwayCounter and gangcounter so that it is 0 when thugs exit and re enter the car
-                        gangCounterB = 0;
-                    }
-                }
-                else
-                {
-                    driveAwayCounterB[i] = 0;
-                    gangCounterB = 0;
-                }
-            }
-
-
-            //Same for groves
-
-            List<Ped> aliveG = thugsalive(groves);
             foreach (Ped p in aliveG)
             {
-                driveAwayCounterG.Add(0);
+                ifEnterCar(p, enterCarCounterG, threshold);
             }
+        }
 
-
-            for (int i = 0; i < aliveG.Count; i++)
+        private bool allThugIn(List<Ped> alive)
+        {
+            int counter = 0;
+            if (alive != null)
             {
-                if (aliveG[i].IsInVehicle() || aliveG[i].IsGettingIntoAVehicle || aliveG[i].IsTryingToEnterALockedVehicle || aliveG[i].IsSittingInVehicle())
+                foreach(Ped p in alive)
                 {
-                    //If ped is in car or gettng in car, increase the gang counter, indicating one of the alive thug is in car. And increase the value ofdriveAwayCounterB by +1
-                    driveAwayCounterG[i]++;
-                    gangCounterG++;
-                    if (gangCounterG >= aliveG.Count) //if gangCounter == the number of thugs alive means that all the thugs are inside a car so we dont have to wait, just drive
+                    if (p != null)
                     {
-
-                        Ped driver = aliveG[i].CurrentVehicle.GetPedOnSeat(VehicleSeat.Driver);
-
-                        if (aliveG[i].CurrentVehicle.IsSeatFree(VehicleSeat.Driver)) //if seat is free just warp into driver seat and drive away
+                        if (p.IsInVehicle() || p.IsSittingInVehicle())
                         {
-                            aliveG[i].Task.WarpIntoVehicle(aliveG[i].CurrentVehicle, VehicleSeat.Driver);
-                            aliveG[i].Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
+                            counter++;
                         }
-                        else  //seat isnt free
-                        {
-                            if (driver.IsAlive == false)//if driveris dead then warp 
-                            {
-                                aliveG[i].Task.WarpIntoVehicle(aliveG[i].CurrentVehicle, VehicleSeat.Driver);
-                                aliveG[i].Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
-                            }
-                            else // driver is alive so we tell the driver to drive
-                            {
-                                driver.Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
-                            }
-                        }
-
-                        driveAwayCounterG[i] = 0;
-                        gangCounterG = 0;
                     }
-                    else if (driveAwayCounterG[i] > threshold || aliveG[i].CurrentVehicle.IsSeatFree(VehicleSeat.Any) == false) //else if counter thresohold reahes or no seat free we drive  away
-                    {
-                        if (aliveG[i].CurrentVehicle.IsSeatFree(VehicleSeat.Any) == false) //if no free seats then we can directly go
-                        {
-                            Ped driver = aliveG[i].CurrentVehicle.GetPedOnSeat(VehicleSeat.Driver);
-                            if (driver.IsAlive == false) //making sure that the driver is alive
-                            {
-                                aliveG[i].Task.WarpIntoVehicle(aliveG[i].CurrentVehicle, VehicleSeat.Driver);
-                                aliveG[i].Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
-                            }
-                            else
-                            {
-                                driver.Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
-                            }
-                        }
-                        else //Means there aer free seats but counter threshold reached
-                        {
-                            if (aliveG[i].CurrentVehicle.IsSeatFree(VehicleSeat.Driver))
-                            {
-                                //If driver seat is free
-                                aliveG[i].Task.WarpIntoVehicle(aliveG[i].CurrentVehicle, VehicleSeat.Driver);
-                                aliveG[i].Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
-                            }
-                            else
-                            {
-                                //if driver seat isnt free
-                                if (aliveG[i].CurrentVehicle.Driver.IsAlive)
-                                {
-                                    aliveG[i].CurrentVehicle.Driver.Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
-                                }
-                                else
-                                {
-                                    aliveG[i].Task.WarpIntoVehicle(aliveG[i].CurrentVehicle, VehicleSeat.Driver);
-                                    aliveG[i].Task.CruiseWithVehicle(aliveG[i].CurrentVehicle, 400);
-                                }
-                            }
-                        }
-                        driveAwayCounterG[i] = 0;//resetting the driveAwayCounter and gangcounter so that it is 0 when thugs exit and re enter the car
-                        gangCounterG = 0;
-                    }
+                }
+                if (counter == alive.Count)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private void ifDrive(Ped p, Dictionary<Ped, int> driveEncounter, int threshold,List<Ped> alive)
+        {
+            if(p.IsInVehicle()|| p.IsSittingInVehicle())
+            {
+                /*1. -If car full drive away
+                 *1.2-If driver dead warp seat n drive else let driver drive
+                 *2. -If seat not full see if driver exists
+                 *2.1-If driver exists check if dead, if dead warp else task drive
+                 *3. -If no drive warp and drive
+                 */
+                Vehicle v = p.CurrentVehicle;
+                driveEncounter[p]++;
+                if (v == null)
+                {
+                    //.......
                 }
                 else
                 {
-                    driveAwayCounterG[i] = 0;
-                    gangCounterG = 0;
+                    if (Function.Call<bool>(Hash._IS_ANY_VEHICLE_SEAT_EMPTY, v))
+                    {
+                        Ped driver = v.Driver;
+                        if (driver.IsDead)
+                        {
+                            p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
+                            p.Task.CruiseWithVehicle(v, 400);
+                        }
+                    }
+                    else if (allThugIn(alive)) //all thugs are in car
+                    {
+                         v = p.CurrentVehicle;
+                        if (v != null)
+                        {
+                            if (v.IsSeatFree(VehicleSeat.Driver))
+                            {
+                                p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
+                                p.Task.CruiseWithVehicle(v, 200);
+                            }
+                            else
+                            {
+                                if (v.Driver.IsDead)
+                                {
+                                    p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
+                                    p.Task.CruiseWithVehicle(v, 200);
+                                }
+                                else
+                                {
+                                    v.Driver.Task.CruiseWithVehicle(v, 200);
+                                }
+                            }
+                        }
+                    }
+                    else if (driveEncounter[p] > threshold)
+                    {
+                        v = p.CurrentVehicle;
+                        if (p != null)
+                        {
+                            if (v.IsSeatFree(VehicleSeat.Driver))
+                            {
+                                p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
+                                p.Task.CruiseWithVehicle(v, 200);
+                            }
+                            else
+                            {
+                                if (v.Driver.IsDead)
+                                {
+                                    p.Task.WarpIntoVehicle(v, VehicleSeat.Driver);
+                                    p.Task.CruiseWithVehicle(v, 200);
+                                }
+                                else
+                                {
+                                    v.Driver.Task.CruiseWithVehicle(v, 200);
+                                }
+                            }
+                        }
+                    }
                 }
             }
-
-
+            else
+            {
+                driveEncounter[p] = 0;
+            }
         }
+
+        public void drive(int threshold)
+        {
+            if (!safetyCheck())
+            {
+                return;
+            }
+            List<Ped> aliveB = thugsalive(ballas);
+            List<Ped> aliveG = thugsalive(groves);
+
+            foreach (Ped p in aliveB)
+            {
+                ifDrive(p, driveAwayCounterB, threshold, aliveB);
+            }
+            foreach(Ped p in aliveG)
+            {
+                ifDrive(p, driveAwayCounterG, threshold, aliveG);
+            }
+        }
+
+
     }
 }
 

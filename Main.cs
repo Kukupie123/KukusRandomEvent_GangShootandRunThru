@@ -25,18 +25,15 @@ namespace KukuEvent
 
         private void onTick(object sender, EventArgs e)
         {
-            if (startup)
-            {
-                UI.ShowHelpMessage("Kuku's random event-Gang encounter.");
-                startup = false;
-            }
-            int chance = rand.Next(1, 20); //probability of incident to occour
+           
+            int chance = rand.Next(1, 60); //probability of incident to occour
+            int numb = rand.Next(1, 60);
             Interval = 1000;
-
-            if (chance == 13)
-            {
+            gang.onTickClean(Game.Player.Character, 500);
+            if (numb == chance) {
                 if (gang.eventActive == false)
                 {
+                    UI.Notify("Gang event on");
                     ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 150;
                     grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 100;
                     gang.instantiateGangs(5, World.GetNextPositionOnSidewalk(ballasSpawn), World.GetNextPositionOnSidewalk(grovesSpawn));
@@ -44,9 +41,7 @@ namespace KukuEvent
                     UI.ShowHelpMessage("GangWar! Check the map for the blips");
                 }
             }
-            gang.drive();
-            gang.onTickClean(Game.Player.Character, 500);
-            gang.check();
+            
         }
 
 
