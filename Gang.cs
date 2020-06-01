@@ -18,6 +18,7 @@ namespace KukuEvent
         Dictionary<Ped, int> driveAwayCounterG;
 
         public bool eventActive = false; //used to make sure that we dont retrigger the event twice
+        int startCHeck = 0;
 
 
         //Responsible for initializing the thugs
@@ -108,7 +109,7 @@ namespace KukuEvent
                         }
                     }
 
-                    ballas.Add(World.CreatePed(thug, spawnB));
+                    ballas.Add(World.CreatePed(thug, spawnB.Around(8)));
                     while (!ballas[i].Exists()) //THIS IS WHERE THE GAME CRASHES AFTER FEW RUNS PREVIOUSLY
                     {
                         Wait(0);
@@ -152,7 +153,7 @@ namespace KukuEvent
                             Wait(0);
                         }
                     }
-                    groves.Add(World.CreatePed(thug, spawnG));
+                    groves.Add(World.CreatePed(thug, spawnG.Around(8)));
 
                     while (!groves[i].Exists())//THIS IS WHERE THE GAME CRASHES AFTER FEW RUNS
                     {
@@ -163,6 +164,34 @@ namespace KukuEvent
             }
             thug.MarkAsNoLongerNeeded();
 
+        }
+
+        private void assignTask(List<Ped> thugs,List<Ped> victim)
+        {
+            if(safetyCheck() == false)
+            {
+                return;
+            }
+            List<Ped> alive = thugsalive(thugs);
+            List<Ped> victims = thugsalive(victim);
+            Random rand = new Random();
+            try
+            {
+                foreach(Ped p in alive)
+                {
+                    if (victims.Count < 1)
+                    {
+                        break;
+                    }
+                    int againtst = rand.Next(0, victim.Count);
+                    p.Task.FightAgainst(victims[againtst]);
+                    victims.RemoveAt(againtst);
+                }
+               
+            }
+            catch
+            {
+            }
         }
 
         /**
@@ -223,7 +252,7 @@ namespace KukuEvent
                 i.AddBlip();
                 i.CurrentBlip.Color = BlipColor.Blue;
                 i.CurrentBlip.Name = "Ballas";
-                i.Task.FightAgainstHatedTargets(999999); //ik the parameters are stupid asf lol
+                i.CurrentBlip.Scale = 0.8f;
             }
 
             //Doing the same for grove
@@ -260,7 +289,8 @@ namespace KukuEvent
                 }
                 i.Accuracy = rand.Next(40, 100);
                 i.RelationshipGroup = groupGrove;
-
+               
+               
 
                 Function.Call(Hash.SET_PED_COMBAT_ABILITY, i, rand.Next(30, 100)); // random attack power
                 Function.Call(Hash.SET_PED_FLEE_ATTRIBUTES, i, 0, 0); //ped wont flee
@@ -270,7 +300,7 @@ namespace KukuEvent
                 i.AddBlip();
                 i.CurrentBlip.Color = BlipColor.Green;
                 i.CurrentBlip.Name = "Grove";
-                i.Task.FightAgainstHatedTargets(99999);
+                i.CurrentBlip.Scale = 0.8f;
             }
             //Modifying the relationship
             World.SetRelationshipBetweenGroups(Relationship.Hate, groupGrove, groupBallas);
@@ -282,6 +312,7 @@ namespace KukuEvent
 
             World.SetRelationshipBetweenGroups(Relationship.Hate, groupGrove, cop);
             World.SetRelationshipBetweenGroups(Relationship.Hate, groupBallas, cop);
+            
 
             //COUNTERS 
             foreach (Ped p in ballas)
@@ -296,6 +327,7 @@ namespace KukuEvent
             }
 
             //COMPLETE NOW THEY SHALL FIGHT. DO NOT USE BLOCK TEMPORARY TASK AS THE FIGHT IS SUPPOSED TO BE NATURAL AND COME AS A TEMP TASK
+
 
         }
 
@@ -358,6 +390,8 @@ namespace KukuEvent
                 driveAwayCounterG = new Dictionary<Ped, int>();
                 UI.ShowHelpMessage("GangWar over,either dead or ran away");
             }
+
+            assignTask(ballas, groves); //I tried setting them in single method but it failed
         }
 
         /**
@@ -428,32 +462,38 @@ namespace KukuEvent
         }
         private void ifEnterCar(Ped p, Dictionary<Ped, int> enterCounter, int threshold)
         {
+            startCHeck++;
             if (p.IsInCombat == false && p.IsGettingIntoAVehicle == false && p.IsTryingToEnterALockedVehicle == false && p.IsInVehicle() == false)
             {
                 
-                Vehicle v = World.GetClosestVehicle(p.Position, 50000);
-                if (v == null)
+                if (startCHeck > 80)
                 {
-                    //No car nearby. FUTURE PLANS
-                }
-                else
-                {
-                    p.Task.EnterVehicle(v, VehicleSeat.Any);
-                    enterCounter[p]++;
-                    if (enterCounter[p] > threshold)
+                    Vehicle v = World.GetClosestVehicle(p.Position, 50000);
+                    if (v == null)
                     {
-                         v = World.GetClosestVehicle(p.Position, 5000);
-                        if (v == null)
+                        //No car nearby. FUTURE PLANS
+                    }
+                    else
+                    {
+                        p.Task.EnterVehicle(v, VehicleSeat.Any);
+                        enterCounter[p]++;
+                        if (enterCounter[p] > threshold)
                         {
+                            v = World.GetClosestVehicle(p.Position, 5000);
+                            if (v == null)
+                            {
 
-                        }
-                        else
-                        {
-                            p.Task.WarpIntoVehicle(v, VehicleSeat.Any);
-                            enterCounter[p] = 0;
+                            }
+                            else
+                            {
+                                p.Task.WarpIntoVehicle(v, VehicleSeat.Any);
+                                enterCounter[p] = 0;
+                            }
                         }
                     }
+                    startCHeck = 80;
                 }
+                
 
             }
             else
@@ -470,6 +510,7 @@ namespace KukuEvent
             {
                 return;
             }
+            assignTask(groves, ballas);
 
             List<Ped> aliveB = thugsalive(ballas);
             List<Ped> aliveG = thugsalive(groves);
@@ -636,7 +677,38 @@ namespace KukuEvent
             }
         }
 
-        
+        public void blipUpdate()
+        {
+            if (safetyCheck() == false)
+            {
+                return;
+            }
+            foreach (Ped p in thugsalive(ballas))
+            {
+                if (p.IsInVehicle())
+                {
+                    p.CurrentBlip.Sprite = BlipSprite.GunCar;
+
+                }
+                else
+                {
+                    p.CurrentBlip.Sprite = BlipSprite.Player;
+                    p.CurrentBlip.Color = BlipColor.Blue;
+                }
+            }
+            foreach (Ped p in thugsalive(groves))
+            {
+                if (p.IsInVehicle())
+                {
+                    p.CurrentBlip.Sprite = BlipSprite.GetawayCar;
+                }
+                else
+                {
+                    p.CurrentBlip.Sprite = BlipSprite.Player;
+                    p.CurrentBlip.Color = BlipColor.Green;
+                }
+            }
+        }
     }
 }
 

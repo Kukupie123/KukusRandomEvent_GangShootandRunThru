@@ -31,18 +31,20 @@ namespace KukuEvent
             gang.onTickClean(Game.Player.Character, 500);
            // gang.changeBlip();
             if (numb == chance) {
+                
                 if (gang.eventActive == false)
                 {
                     UI.Notify("Gang event-Loading models");
-                    ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 150;
-                    grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 100;
-                    gang.instantiateGangs(7, World.GetNextPositionOnSidewalk(ballasSpawn), World.GetNextPositionOnSidewalk(grovesSpawn));
+                    ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 130;
+                    grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 110;
+                    gang.instantiateGangs(15, World.GetNextPositionOnSidewalk(ballasSpawn), World.GetNextPositionOnSidewalk(grovesSpawn));
                     gang.postInstantiation();
                     UI.Notify("GangWar! Check the map for the blips");
                 }
             }
             gang.check(10);
             gang.drive(18);
+            gang.blipUpdate();
             
         }
 
@@ -54,6 +56,15 @@ namespace KukuEvent
             if (e.KeyCode == Keys.OemQuestion)
             {
                 gang.deleteThugs();
+            }
+            else if(e.KeyCode == Keys.Delete)
+            {
+                UI.Notify("Gang event-Loading models");
+                ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 160;
+                grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 100;
+                gang.instantiateGangs(15, World.GetNextPositionOnSidewalk(ballasSpawn), World.GetNextPositionOnSidewalk(grovesSpawn));
+                gang.postInstantiation();
+                UI.Notify("GangWar! Check the map for the blips");
             }
 
 
