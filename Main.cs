@@ -25,8 +25,8 @@ namespace KukuEvent
         private void onTick(object sender, EventArgs e)
         {
 
-            int chance = rand.Next(1, 50); //probability of incident to occour
-            int numb = rand.Next(1, 50);
+            int chance = rand.Next(1, 200); //probability of incident to occour
+            int numb = rand.Next(1, 200);
             Interval = 1000;
             gang.onTickClean(Game.Player.Character, 500);
            // gang.changeBlip();
@@ -55,16 +55,17 @@ namespace KukuEvent
         {
             if (e.KeyCode == Keys.OemQuestion)
             {
-                gang.deleteThugs();
-            }
-            else if(e.KeyCode == Keys.Delete)
-            {
+               
                 UI.Notify("Gang event-Loading models");
                 ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 160;
                 grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * 100;
                 gang.instantiateGangs(15, World.GetNextPositionOnSidewalk(ballasSpawn), World.GetNextPositionOnSidewalk(grovesSpawn));
                 gang.postInstantiation();
                 UI.Notify("GangWar! Check the map for the blips");
+            }
+            else if(e.KeyCode == Keys.Delete)
+            {
+                gang.deleteThugs();
             }
 
 
