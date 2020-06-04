@@ -21,6 +21,7 @@ namespace KukuEvent
         int startCHeck = 0;
 
 
+
         //Responsible for initializing the thugs
         public void instantiateGangs(int totalThugPerTeam, Vector3 spawnB, Vector3 spawnG)
         {
@@ -215,7 +216,7 @@ namespace KukuEvent
                     case 1:
                         i.Weapons.Give(WeaponHash.VintagePistol, 100, true, true);
 
-                        i.Weapons.Give(WeaponHash.MicroSMG, 100, true, true);
+                        i.Weapons.Give(WeaponHash.CombatPDW, 100, true, true);
                         break;
                     case 2:
                         i.Weapons.Give(WeaponHash.APPistol, 100, true, true);
@@ -225,7 +226,7 @@ namespace KukuEvent
                     case 3:
                         i.Weapons.Give(WeaponHash.CombatPistol, 100, true, true);
 
-                        i.Weapons.Give(WeaponHash.SniperRifle, 900, true, true);
+                        i.Weapons.Give(WeaponHash.BullpupShotgun, 900, true, true);
                         break;
                     case 4:
                         i.Weapons.Give(WeaponHash.MicroSMG, 100, true, true);
@@ -235,7 +236,7 @@ namespace KukuEvent
                     case 5:
                         i.Weapons.Give(WeaponHash.Pistol50, 100, true, true);
 
-                        i.Weapons.Give(WeaponHash.HomingLauncher, 5, true, true);
+                        i.Weapons.Give(WeaponHash.AssaultSMG, 5, true, true);
                         break;
                 }
                 //Setting up relatinships, stats, blips etc
@@ -252,7 +253,7 @@ namespace KukuEvent
                 i.AddBlip();
                 i.CurrentBlip.Color = BlipColor.Blue;
                 i.CurrentBlip.Name = "Ballas";
-                i.CurrentBlip.Scale = 0.8f;
+                i.CurrentBlip.Scale = 0.6f;
             }
 
             //Doing the same for grove
@@ -264,7 +265,7 @@ namespace KukuEvent
                     case 1:
                         i.Weapons.Give(WeaponHash.Pistol50, 100, true, true);
 
-                        i.Weapons.Give(WeaponHash.APPistol, 100, true, true);
+                        i.Weapons.Give(WeaponHash.CombatMG, 100, true, true);
                         break;
                     case 2:
                         i.Weapons.Give(WeaponHash.APPistol, 100, true, true);
@@ -274,7 +275,7 @@ namespace KukuEvent
                     case 3:
                         i.Weapons.Give(WeaponHash.CombatPistol, 100, true, true);
 
-                        i.Weapons.Give(WeaponHash.SniperRifle, 900, true, true);
+                        i.Weapons.Give(WeaponHash.SpecialCarbine, 900, true, true);
                         break;
                     case 4:
                         i.Weapons.Give(WeaponHash.HeavyPistol, 100, true, true);
@@ -284,7 +285,7 @@ namespace KukuEvent
                     case 5:
                         i.Weapons.Give(WeaponHash.DoubleActionRevolver, 100, true, true);
 
-                        i.Weapons.Give(WeaponHash.HomingLauncher, 5, true, true);
+                        i.Weapons.Give(WeaponHash.PistolMk2, 5, true, true);
                         break;
                 }
                 i.Accuracy = rand.Next(40, 100);
@@ -300,7 +301,7 @@ namespace KukuEvent
                 i.AddBlip();
                 i.CurrentBlip.Color = BlipColor.Green;
                 i.CurrentBlip.Name = "Grove";
-                i.CurrentBlip.Scale = 0.8f;
+                i.CurrentBlip.Scale = 0.6f;
             }
             //Modifying the relationship
             World.SetRelationshipBetweenGroups(Relationship.Hate, groupGrove, groupBallas);
@@ -462,16 +463,41 @@ namespace KukuEvent
         }
         private void ifEnterCar(Ped p, Dictionary<Ped, int> enterCounter, int threshold)
         {
+            //If you are in the nearest car as a driver then we will give u wanted 
+            //If u enter as a passenger then u will get wanted and a waypoint.
+
+            //TRY: Other cars will now follow the car u at
             startCHeck++;
             if (p.IsInCombat == false && p.IsGettingIntoAVehicle == false && p.IsTryingToEnterALockedVehicle == false && p.IsInVehicle() == false)
             {
                 
                 if (startCHeck > 80)
                 {
+
+
                     Vehicle v = World.GetClosestVehicle(p.Position, 50000);
+                   
                     if (v == null)
                     {
                         //No car nearby. FUTURE PLANS
+                    }
+                    //If player is in driver car
+                    else if (v.IsSeatFree(VehicleSeat.Driver) == false)
+                    {
+                        if (v.GetPedOnSeat(VehicleSeat.Driver).Equals(Game.Player.Character))
+                        {
+
+                        }
+                        else
+                        {
+                            p.Task.EnterVehicle(v, VehicleSeat.Any);
+                            enterCounter[p]++;
+
+                            if (enterCounter[p] > threshold)
+                            {
+
+                            }
+                        }
                     }
                     else
                     {
@@ -688,12 +714,14 @@ namespace KukuEvent
                 if (p.IsInVehicle())
                 {
                     p.CurrentBlip.Sprite = BlipSprite.GunCar;
+                    p.CurrentBlip.Name = "Ballas in Car";
 
                 }
                 else
                 {
-                    p.CurrentBlip.Sprite = BlipSprite.Player;
+                    p.CurrentBlip.Sprite = BlipSprite.Standard;
                     p.CurrentBlip.Color = BlipColor.Blue;
+                    p.CurrentBlip.Name = "Ballas";
                 }
             }
             foreach (Ped p in thugsalive(groves))
@@ -701,13 +729,21 @@ namespace KukuEvent
                 if (p.IsInVehicle())
                 {
                     p.CurrentBlip.Sprite = BlipSprite.GetawayCar;
+                    p.CurrentBlip.Name = "Grove in Car";
                 }
                 else
                 {
-                    p.CurrentBlip.Sprite = BlipSprite.Player;
+                    p.CurrentBlip.Sprite = BlipSprite.Standard;
                     p.CurrentBlip.Color = BlipColor.Green;
+                    p.CurrentBlip.Name = "Groves";
                 }
             }
+        }
+
+
+        public void policeBackup()
+        {
+            //Police backup shall arrive after certain time.
         }
     }
 }
