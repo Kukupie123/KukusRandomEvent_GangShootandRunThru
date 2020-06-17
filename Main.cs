@@ -23,6 +23,8 @@ namespace KukuEvent
         int radiusToDeleteThugs;//
         int spawnDistanceBallas;//
         int spawnDistanceGroves;//
+        int noty;
+        public static int friendlyGrove;
         Keys trigger;//
         Keys delete;//
         public Main()
@@ -47,17 +49,20 @@ namespace KukuEvent
                     sw.WriteLine("Enable_Event = L");
                     sw.WriteLine("Delete_Event = Delete");
                     sw.WriteLine("Number_of_Members_per_Team = 7");
-                    sw.WriteLine("Event_Trigger_Chance = 200 //higher the number lower the chances");
+                    sw.WriteLine("Event_Trigger_Chance = 200 ");
+                    sw.WriteLine("Show_Notification = 1 ");
+                    sw.WriteLine("friendly_grove = 1 ");
 
                     sw.WriteLine("[ADVANCED]");
                     sw.WriteLine("//DONT SET SPAWN DISTANCE TOO FAR OR ESLE THEY WONT FIGHT");
                     sw.WriteLine("Spawn_Distance_Ballas = 115");
                     sw.WriteLine("Spawn_Distance_Groves = 110");
-                    sw.WriteLine("Radius_To_Delete = 500 //Any ped farther from this range will be deleted");
-                    sw.WriteLine("Start_Driving_Timer = 18 //ped will start driving after this much sec has been passed");
-                    sw.WriteLine("Warp_Timer = 10 // Ped will be warped to the nearest car after this much seconds");
+                    sw.WriteLine("Radius_To_Delete = 500");
+                    sw.WriteLine("Start_Driving_Timer = 18 ");
+                    sw.WriteLine("Warp_Timer = 10 ");
 
                 }
+                config = ScriptSettings.Load(path);
             }
             else
             {
@@ -74,10 +79,18 @@ namespace KukuEvent
             spawnDistanceBallas = config.GetValue<int>("ADVANCED", "Spawn_Distance_Ballas", 118);
             spawnDistanceGroves = config.GetValue<int>("ADVANCED", "Spawn_Distance_Groves", 110);
             delete = config.GetValue<Keys>("BASIC", "Delete_Event", Keys.Delete);
-            trigger = config.GetValue<Keys>("BASIC", "Enable_Event", Keys.OemQuestion); 
+            trigger = config.GetValue<Keys>("BASIC", "Enable_Event", Keys.OemQuestion);
+            noty = config.GetValue<int>("BASIC", "Show_Notification", 1);
+            friendlyGrove = config.GetValue<int>("BASIC", "friendly_grove", 1);
         }
 
-
+        private void startWar()
+        {
+            ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * spawnDistanceBallas;
+            grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * spawnDistanceGroves;
+            gang.instantiateGangs(thugsPerTeam, World.GetNextPositionOnStreet(ballasSpawn), World.GetNextPositionOnStreet(grovesSpawn));
+            gang.postInstantiation();
+        }
         private void onTick(object sender, EventArgs e)
         {
 
@@ -85,23 +98,26 @@ namespace KukuEvent
             int numb = rand.Next(1, eventTriggerChance);
             Interval = 1000;
             gang.onTickClean(Game.Player.Character, radiusToDeleteThugs);
-           // gang.changeBlip();
             if (numb == chance) {
                 
                 if (gang.eventActive == false)
                 {
-                    UI.Notify("Gang event-Loading models");
-                    ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * spawnDistanceBallas;
-                    grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * spawnDistanceGroves;
-                    gang.instantiateGangs(thugsPerTeam, World.GetNextPositionOnStreet(ballasSpawn), World.GetNextPositionOnStreet(grovesSpawn));
-                    gang.postInstantiation();
-
-                    UI.Notify("GangWar! Check the map for the blips");
+                    if (noty == 1)
+                    {
+                        UI.Notify("Gang event-Loading models");
+                        startWar();
+                        UI.Notify("GangWar! Check the map for the blips");
+                    }
+                    else
+                    {
+                        startWar();
+                    }
                 }
             }
-            gang.check(warpToCarTimer);
-            gang.drive(startDrivingTimer);
+            gang.shouldEnterCarCheck(warpToCarTimer);
+            gang.startDrivingCheck(startDrivingTimer);
             gang.blipUpdate();
+           
             
         }
 
@@ -115,13 +131,16 @@ namespace KukuEvent
 
                 if (gang.eventActive == false)
                 {
-                    UI.Notify("Gang event-Loading models");
-                    ballasSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * spawnDistanceBallas;
-                    grovesSpawn = Game.Player.Character.Position + Game.Player.Character.ForwardVector * spawnDistanceGroves;
-                    gang.instantiateGangs(thugsPerTeam, World.GetNextPositionOnStreet(ballasSpawn), World.GetNextPositionOnStreet(grovesSpawn));
-                    gang.postInstantiation();
-
-                    UI.Notify("GangWar! Check the map for the blips");
+                    if (noty == 1)
+                    {
+                        UI.Notify("Gang event-Loading models");
+                        startWar();
+                        UI.Notify("GangWar! Check the map for the blips");
+                    }
+                    else
+                    {
+                        startWar();
+                    }
                 }
                 else
                 {
